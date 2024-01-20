@@ -1,0 +1,10 @@
+{
+  "domain": "work_clock",
+  "name": "Work Clock",
+  "documentation": "https://github.com/Waschdel/work_clock",
+  "issue_tracker": "https://github.com/Waschdel/work_clock/issues",
+  "dependencies": [],
+  "config_flow": true,
+  "codeowners": ["@Waschdel"],
+  "requirements": []
+}

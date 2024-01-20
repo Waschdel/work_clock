@@ -1,0 +1,13 @@
+{
+  "_checkout": null,
+  "_output_dir": "/home/sebagrim/src",
+  "_repo_dir": "ladida",
+  "_template": "ladida",
+  "class_name_prefix": "WorkClock",
+  "domain_name": "work_clock",
+  "friendly_name": "Work Clock",
+  "github_user": "Waschdel",
+  "project_name": "work_clock",
+  "test_suite": "yes",
+  "version": "0.0.1"
+}
