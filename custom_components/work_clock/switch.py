@@ -1,43 +1,64 @@
-"""Switch platform for Work Clock."""
-from homeassistant.components.switch import SwitchEntity
+"""Work Clock Switches."""
+from __future__ import annotations
 
-from .const import DEFAULT_NAME
+import logging
+from typing import Literal
+
+from homeassistant.components.switch import SwitchEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from . import WorkClockDataUpdateCoordinator
 from .const import DOMAIN
-from .const import ICON
-from .const import SWITCH
 from .entity import WorkClockEntity
 
+_LOGGER = logging.getLogger(__name__)
 
-async def async_setup_entry(hass, entry, async_add_devices):
-    """Setup sensor platform."""
+
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+) -> None:
+    """Initialize WorkClock config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_devices([WorkClockBinarySwitch(coordinator, entry)])
+    async_add_entities([WorkClockSwitch(coordinator, entry)])
 
 
-class WorkClockBinarySwitch(WorkClockEntity, SwitchEntity):
-    """work_clock switch class."""
+class WorkClockSwitch(WorkClockEntity, SwitchEntity):
+    """Representation of work clock switch."""
 
-    async def async_turn_on(self, **kwargs):  # pylint: disable=unused-argument
-        """Turn on the switch."""
-        await self.coordinator.api.async_set_title("bar")
+    def __init__(
+        self,
+        coordinator: WorkClockDataUpdateCoordinator,
+        config_entry: ConfigEntry,
+    ) -> None:
+        """Initialize the WorkClock switch."""
+        super().__init__(coordinator, config_entry)
+        self.entity_id = self.coordinator.client.entity_id
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Turn the device on."""
+        await self.coordinator.client.async_write_state(True)
         await self.coordinator.async_request_refresh()
 
-    async def async_turn_off(self, **kwargs):  # pylint: disable=unused-argument
-        """Turn off the switch."""
-        await self.coordinator.api.async_set_title("foo")
+    async def async_turn_off(self, **kwargs) -> None:
+        """Turn the device off."""
+        await self.coordinator.client.async_write_state(False)
         await self.coordinator.async_request_refresh()
 
     @property
     def name(self):
         """Return the name of the switch."""
-        return f"{DEFAULT_NAME}_{SWITCH}"
+        name: str = self.config_entry.options.get(CONF_NAME, "")
+        return f"{name.capitalize()} State"
 
     @property
-    def icon(self):
-        """Return the icon of this switch."""
-        return ICON
+    def is_on(self) -> bool | None:
+        """Return True if entity is on."""
+        return self.coordinator.client.is_on
 
     @property
-    def is_on(self):
-        """Return true if the switch is on."""
-        return self.coordinator.data.get("title", "") == "foo"
+    def assumed_state(self) -> Literal[False]:
+        """Assumed state is off."""
+        return False

@@ -1,0 +1,59 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_account%]"
+    },
+    "error": {
+      "db_url_invalid": "Database URL invalid"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "db_url": "Database URL",
+          "name": "[%key:common::config_flow::data::name%]",
+          "time_zone": "Time Zone",
+          "work_hours": "Work Hours",
+          "start_date": "Start Date",
+          "start_fg": "Initial FG",
+          "start_fz": "Initial FZ"
+        },
+        "data_description": {
+          "db_url": "Database URL, leave empty to use HA recorder database",
+          "name": "Name that will be used for all entities",
+          "time_zone": "Timezone that will be used for showing the data",
+          "work_hours": "Work hours per day",
+          "start_date": "Start date of work clock",
+          "start_fg": "Initial official overtime hours",
+          "start_fz": "Initial unofficial overtime hours"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "db_url": "[%key:component::work_clock::config::step::user::data::db_url%]",
+          "name": "[%key:common::config_flow::data::name%]",
+          "time_zone": "[%key:component::work_clock::config::step::user::data::time_zone%]",
+          "work_hours": "[%key:component::work_clock::config::step::user::data::work_hours%]",
+          "start_date": "[%key:component::work_clock::config::step::user::data::start_date%]",
+          "start_fg": "[%key:component::work_clock::config::step::user::data::start_fg%]",
+          "start_fz": "[%key:component::work_clock::config::step::user::data::start_fz%]"
+        },
+        "data_description": {
+          "db_url": "[%key:component::work_clock::config::step::user::data_description::db_url%]",
+          "name": "[%key:component::work_clock::config::step::user::data_description::name%]",
+          "time_zone": "[%key:component::work_clock::config::step::user::data_description::time_zone%]",
+          "work_hours": "[%key:component::work_clock::config::step::user::data_description::work_hours%]",
+          "start_date": "[%key:component::work_clock::config::step::user::data_description::start_date%]",
+          "start_fg": "[%key:component::work_clock::config::step::user::data_description::start_fg%]",
+          "start_fz": "[%key:component::work_clock::config::step::user::data_description::start_fz%]"
+        }
+      }
+    },
+    "error": {
+      "db_url_invalid": "[%key:component::work_clock::config::error::db_url_invalid%]"
+    }
+  }
+}

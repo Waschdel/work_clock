@@ -1,14 +1,18 @@
-"""WorkClockEntity class"""
+"""WorkClockEntity class."""
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ATTRIBUTION
-from .const import DOMAIN
-from .const import NAME
-from .const import VERSION
+from . import WorkClockDataUpdateCoordinator
+from .const import DOMAIN, ICON, NAME, VERSION
 
 
 class WorkClockEntity(CoordinatorEntity):
-    def __init__(self, coordinator, config_entry):
+    """Work clock template entity."""
+
+    def __init__(
+        self, coordinator: WorkClockDataUpdateCoordinator, config_entry: ConfigEntry
+    ) -> None:
+        """Init Work clock template entity."""
         super().__init__(coordinator)
         self.config_entry = config_entry
 
@@ -19,6 +23,7 @@ class WorkClockEntity(CoordinatorEntity):
 
     @property
     def device_info(self):
+        """Return the device info."""
         return {
             "identifiers": {(DOMAIN, self.unique_id)},
             "name": NAME,
@@ -30,7 +35,11 @@ class WorkClockEntity(CoordinatorEntity):
     def device_state_attributes(self):
         """Return the state attributes."""
         return {
-            "attribution": ATTRIBUTION,
             "id": str(self.coordinator.data.get("id")),
             "integration": DOMAIN,
         }
+
+    @property
+    def icon(self):
+        """Return icon to be used for this sensor."""
+        return ICON
