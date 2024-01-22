@@ -1,50 +1,78 @@
-"""
-Custom integration to integrate Work Clock with Home Assistant.
+"""The work_clock component."""
+from __future__ import annotations
 
-For more details about this integration, please refer to
-https://github.com/Waschdel/work_clock
-"""
-import asyncio
-import logging
+from asyncio import timeout as async_timeout
 from datetime import timedelta
+import logging
 
+import voluptuous as vol
+
+from homeassistant.components.recorder import CONF_DB_URL
+from homeassistant.components.sql.util import resolve_db_url
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Config
+from homeassistant.const import CONF_NAME, CONF_TIME_ZONE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.update_coordinator import UpdateFailed
 
-from .api import WorkClockApiClient
-from .const import CONF_PASSWORD
-from .const import CONF_USERNAME
-from .const import DOMAIN
-from .const import PLATFORMS
-from .const import STARTUP_MESSAGE
+from .const import (
+    CONF_START_DATE,
+    CONF_START_FG,
+    CONF_START_FZ,
+    CONF_WORKHOURS,
+    DOMAIN,
+    PLATFORMS,
+    STARTUP_MESSAGE,
+)
+from .db import WorkClockDbClient, async_get_sessionmaker
 
-SCAN_INTERVAL = timedelta(seconds=30)
-
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+_LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup(hass: HomeAssistant, config: Config):
+ITEM_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): cv.string,
+        vol.Optional(CONF_DB_URL): cv.string,
+        vol.Required(CONF_TIME_ZONE): cv.string,
+        vol.Required(CONF_WORKHOURS): cv.positive_int,
+        vol.Required(CONF_START_DATE): cv.date,
+        vol.Required(CONF_START_FG): cv.small_float,
+        vol.Required(CONF_START_FZ): cv.small_float,
+    }
+)
+
+CONFIG_SCHEMA = vol.Schema(
+    {vol.Optional(DOMAIN): vol.All(cv.ensure_list, [ITEM_SCHEMA])},
+    extra=vol.ALLOW_EXTRA,
+)
+
+
+async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Update listener for options."""
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up this integration using YAML is not supported."""
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Set up this integration using UI."""
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up WorkClock from a config entry."""
     if hass.data.get(DOMAIN) is None:
         hass.data.setdefault(DOMAIN, {})
         _LOGGER.info(STARTUP_MESSAGE)
 
-    username = entry.data.get(CONF_USERNAME)
-    password = entry.data.get(CONF_PASSWORD)
-
-    session = async_get_clientsession(hass)
-    client = WorkClockApiClient(username, password, session)
-
+    sessmaker, use_database_executor = await async_get_sessionmaker(
+        hass, resolve_db_url(hass, entry.options.get(CONF_DB_URL))
+    )
+    if sessmaker is None:
+        return False
+    client: WorkClockDbClient = WorkClockDbClient(
+        hass, entry.options, sessmaker, use_database_executor
+    )
     coordinator = WorkClockDataUpdateCoordinator(hass, client=client)
     await coordinator.async_refresh()
 
@@ -53,58 +81,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    for platform in PLATFORMS:
-        if entry.options.get(platform, True):
-            coordinator.platforms.append(platform)
-            hass.async_add_job(
-                hass.config_entries.async_forward_entry_setup(entry, platform)
-            )
+    entry.async_on_unload(entry.add_update_listener(async_update_listener))
 
-    entry.add_update_listener(async_reload_entry)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
     return True
 
 
 class WorkClockDataUpdateCoordinator(DataUpdateCoordinator):
-    """Class to manage fetching data from the API."""
+    """WorkClock coordinator."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        client: WorkClockApiClient,
-    ) -> None:
-        """Initialize."""
-        self.api = client
-        self.platforms = []
-
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=SCAN_INTERVAL)
+    def __init__(self, hass: HomeAssistant, client: WorkClockDbClient) -> None:
+        """Initialize WorkClock coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            # Name of the data. For logging purposes.
+            name="WorkClock",
+            # Polling interval. Will only be polled if there are subscribers.
+            update_interval=timedelta(seconds=300),
+        )
+        self.client: WorkClockDbClient = client
 
     async def _async_update_data(self):
-        """Update data via library."""
-        try:
-            return await self.api.async_get_data()
-        except Exception as exception:
-            raise UpdateFailed() from exception
+        """Fetch data from Databse."""
+        async with async_timeout(10):
+            return await self.client.async_update()
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Handle removal of an entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    unloaded = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
-                if platform in coordinator.platforms
-            ]
-        )
-    )
-    if unloaded:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unloaded
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    """Unload WorkClock config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

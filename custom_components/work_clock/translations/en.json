@@ -1,31 +1,59 @@
 {
-  "config": {
-    "step": {
-      "user": {
-        "title": "Work Clock",
-        "description": "If you need help with the configuration have a look here: https://github.com/Waschdel/work_clock",
-        "data": {
-          "username": "Username",
-          "password": "Password"
+    "config": {
+        "abort": {
+            "already_configured": "Account is already configured"
+        },
+        "error": {
+            "db_url_invalid": "Database URL invalid"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "db_url": "Database URL",
+                    "name": "Name",
+                    "time_zone": "Time Zone",
+                    "work_hours": "Work Hours",
+                    "start_date": "Start Date",
+                    "start_fg": "Initial FG",
+                    "start_fz": "Initial FZ"
+                },
+                "data_description": {
+                    "db_url": "Database URL, leave empty to use HA recorder database",
+                    "name": "Name that will be used for Config Entry and also the Sensor",
+                    "time_zone": "Timezone that will be used for showing the data",
+                    "work_hours": "Work hours per day",
+                    "start_date": "Start date of work clock",
+                    "start_fg": "Initial official overtime hours",
+                    "start_fz": "Initial unofficial overtime hours"
+                }
+            }
         }
-      }
     },
-    "error": {
-      "auth": "Username/Password is wrong."
-    },
-    "abort": {
-      "single_instance_allowed": "Only a single instance is allowed."
-    }
-  },
-  "options": {
-    "step": {
-      "user": {
-        "data": {
-          "binary_sensor": "Binary sensor enabled",
-          "sensor": "Sensor enabled",
-          "switch": "Switch enabled"
+    "options": {
+        "error": {
+            "db_url_invalid": "Database URL invalid"
+        },
+        "step": {
+            "init": {
+                "data": {
+                    "db_url": "Database URL",
+                    "name": "Name",
+                    "time_zone": "Time Zone",
+                    "work_hours": "Work Hours",
+                    "start_date": "Start Date",
+                    "start_fg": "Initial FG",
+                    "start_fz": "Initial FZ"
+                },
+                "data_description": {
+                    "db_url": "Database URL, leave empty to use HA recorder database",
+                    "name": "Name that will be used for Config Entry and also the Sensor",
+                    "time_zone": "Timezone that will be used for showing the data",
+                    "work_hours": "Work hours per day",
+                    "start_date": "Start date of work clock",
+                    "start_fg": "Initial official overtime hours",
+                    "start_fz": "Initial unofficial overtime hours"
+                }
+            }
         }
-      }
     }
-  }
 }

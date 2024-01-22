@@ -1,0 +1,24 @@
+# Describes the format for available services
+delete_state:
+  name: Delete State
+  description: Delete selected state from states.
+  target:
+    entity:
+      integration: work_clock
+      domain: select
+
+edit_state:
+  name: Edit State
+  description: Reset time of selected state from states.
+  target:
+    entity:
+      integration: work_clock
+      domain: select
+  fields:
+    date_time:
+      name: Datetime
+      description: New datetime
+      example: '"2019-04-20 05:04:20"'
+      required: true
+      selector:
+        datetime:
