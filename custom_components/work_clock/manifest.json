@@ -6,5 +6,6 @@
   "dependencies": [],
   "config_flow": true,
   "codeowners": ["@Waschdel"],
-  "requirements": []
+  "requirements": ["pandas", "SQLAlchemy"],
+  "version": "0.0.1"
 }
