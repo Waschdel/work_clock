@@ -104,6 +104,26 @@ class WorkClockDbClient:
             return
         return rows.iloc[[self.selected_entry]]
 
+    def set_selected_entry(self, i_entry: int):
+        """Set selected entry."""
+        self.selected_entry = i_entry
+        row = self.get_selected_entry().iloc[0]
+        if row is not None:
+            self.new_type = None if row.isna()["type"] else row["type"]
+            d = row["date"]
+            if row.isna()["start"]:
+                self.new_t_start = None
+            else:
+                start: pd.Timestamp = row["start"]
+                start.replace(year=d.year, month=d.month, day=d.day)
+                self.new_t_start = start.to_pydatetime()
+            if row.isna()["end"]:
+                self.new_t_end = None
+            else:
+                t_end: pd.Timestamp = row["end"]
+                t_end.replace(year=d.year, month=d.month, day=d.day)
+                self.new_t_end = t_end.to_pydatetime()
+
     async def async_update(self):
         """WorkClock states class."""
         t_perf = perf_counter()
@@ -195,6 +215,7 @@ class WorkClockDbClient:
         # drop entity id
         states.drop(columns=["entity_id"], inplace=True)
         # fix dtypes
+        states["datetime"] = states["datetime"].dt.tz_localize("UTC")
         for key in STATES_SCHEMA.columns:
             if key not in states.columns:
                 states[key] = None
@@ -256,8 +277,14 @@ class WorkClockDbClient:
             return ENTRIES_SCHEMA
         entries.drop(columns=["entity_id"], inplace=True)
         # cat time and date
-        entries["start"] = entries["date"] + " " + entries["start"]
-        entries["end"] = entries["date"] + " " + entries["end"]
+        for key in ["start", "end"]:
+            mask = ~entries[key].isna()
+            t = entries.loc[mask, key]
+            entries[key] = pd.NaT
+            entries[key] = entries[key].astype(ENTRIES_SCHEMA[key].dtype)
+            entries.loc[mask, key] = (
+                entries.loc[mask, "date"].astype("datetime64[s]") + t
+            )
         # fix dtypes
         for key in ENTRIES_SCHEMA.columns:
             if key not in entries.columns:
@@ -346,6 +373,9 @@ class WorkClockDbClient:
                 ]
 
             # calc times
+            self.entries.loc[
+                mask_clear, ["time_sum", "time_booked", "src", "tar_hours"]
+            ] = None
             if i_end in self.entries.index:
                 self.calc_times(i_end)
             i_st = i_end + pd.Timedelta(1, "d")
@@ -445,8 +475,12 @@ class WorkClockDbClient:
     def calc_fz(self, i) -> pd.Timedelta:
         """Calculate FZ for date."""
         mask = self.entries.index < i
-        dt = self.entries.loc[mask, ["src", "time_sum"]].replace(np.nan, 0.0)
-        dt = (dt["src"] - dt["time_sum"]).sum() + self.start_fz
+        time_account = (
+            self.entries.loc[mask, ["src", "time_sum"]]
+            .replace(np.nan, 0.0)
+            .diff(-1, axis=1)["src"]
+        )
+        dt = time_account.sum() + self.start_fz
         return pd.Timedelta(round(dt * 60), "m")
 
     def public_hol(self):
@@ -520,7 +554,7 @@ class WorkClockDbClient:
     async def async_write_state(self, state: bool):
         """Add state to db."""
         # check if time exists
-        dt = utc_now_m()
+        dt = utc_now_m().replace(tzinfo=None)
         query = (
             f"SELECT * FROM {TABLE_STATES} "  # noqa: S608
             f"WHERE entity_id = '{self.entity_id}' "
@@ -551,7 +585,7 @@ class WorkClockDbClient:
         date_time = self.selected_state
         if date_time.tzinfo is None:
             date_time = date_time.replace(tzinfo=self.tz)
-        date_time = date_time.astimezone(ZoneInfo("UTC"))
+        date_time = date_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
         query = f"DELETE FROM {TABLE_STATES} WHERE entity_id = '{self.entity_id}' AND datetime IN ('{date_time}', '{date_time.replace(tzinfo=None)}');"  # noqa: S608
         result = await self._async_exec_query(query)
         if result is None or result.rowcount <= 0:
@@ -573,12 +607,12 @@ class WorkClockDbClient:
         new_time = self.new_state
         if new_time.tzinfo is None:
             new_time = new_time.replace(tzinfo=self.tz)
-        new_time = new_time.astimezone(ZoneInfo("UTC"))
+        new_time = new_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
         selected_time = self.selected_state
         if selected_time.tzinfo is None:
             selected_time = selected_time.replace(tzinfo=self.tz)
-        selected_time = selected_time.astimezone(ZoneInfo("UTC"))
+        selected_time = selected_time.astimezone(ZoneInfo("UTC")).replace(tzinfo=None)
 
         query = f"UPDATE {TABLE_STATES} SET datetime = '{new_time}' WHERE entity_id = '{self.entity_id}' AND datetime = '{selected_time}';"  # noqa: S608
         result = await self._async_exec_query(query)

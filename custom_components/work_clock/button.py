@@ -28,6 +28,7 @@ async def async_setup_entry(
     """Initialize WorkClock config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     entities = [
+        WorkClockButtonReload(coordinator, entry),
         WorkClockButtonDeleteState(coordinator, entry),
         WorkClockButtonEditState(coordinator, entry),
         WorkClockButtonAddEntry(coordinator, entry),
@@ -39,6 +40,31 @@ async def async_setup_entry(
         WorkClockButtonClearEnd(coordinator, entry),
     ]
     async_add_entities(entities)
+
+
+class WorkClockButtonReload(WorkClockEntity, ButtonEntity):
+    """Representation of work clock switch."""
+
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        self.coordinator.client.reload = True
+        await self.coordinator.async_request_refresh()
+
+    @property
+    def unique_id(self):
+        """Return a unique ID to use for this entity."""
+        return self.config_entry.entry_id + "_reload"
+
+    @property
+    def name(self):
+        """Return the name of the switch."""
+        name: str = self.config_entry.options.get(CONF_NAME, "")
+        return f"{name.capitalize()} Reload"
+
+    @property
+    def icon(self):
+        """Return the icon of the switch."""
+        return "mdi:reload"
 
 
 class WorkClockButtonDeleteState(WorkClockEntity, ButtonEntity):
@@ -206,7 +232,7 @@ class WorkClockButtonThisMonth(WorkClockEntity, ButtonEntity):
             )
             return
         self.coordinator.client.selected_month = date_time
-        self.coordinator.client.selected_entry = 0
+        self.coordinator.client.set_selected_entry(0)
         await self.coordinator.async_request_refresh()
 
     @property
@@ -247,7 +273,7 @@ class WorkClockButtonTodayEntry(WorkClockEntity, ButtonEntity):
         )
         if not any(mask):
             return
-        self.coordinator.client.selected_entry = np.argmax(mask)
+        self.coordinator.client.set_selected_entry(np.argmax(mask))
         await self.coordinator.async_request_refresh()
 
     @property

@@ -105,6 +105,7 @@ class WorkClockSelectMonth(WorkClockEntity, SelectEntity):
             _LOGGER.error("Unknown option %s", option)
             return
         self.coordinator.client.selected_month = date_time
+        self.coordinator.client.set_selected_entry(0)
         await self.coordinator.async_request_refresh()
 
     @property
@@ -169,25 +170,7 @@ class WorkClockSelectEntry(WorkClockEntity, SelectEntity):
             _LOGGER.error("COuld not get index from %s", option)
             return
         _LOGGER.debug("%d is %s", i_entry, option)
-        self.coordinator.client.selected_entry = i_entry
-        row = self.coordinator.client.get_selected_entry().iloc[0]
-        if row is not None:
-            self.coordinator.client.new_type = (
-                None if row.isna()["type"] else row["type"]
-            )
-            d = row["date"]
-            if row.isna()["start"]:
-                self.coordinator.client.new_t_start = None
-            else:
-                start: pd.Timestamp = row["start"]
-                start.replace(year=d.year, month=d.month, day=d.day)
-                self.coordinator.client.new_t_start = start.to_pydatetime()
-            if row.isna()["end"]:
-                self.coordinator.client.new_t_end = None
-            else:
-                t_end: pd.Timestamp = row["end"]
-                t_end.replace(year=d.year, month=d.month, day=d.day)
-                self.coordinator.client.new_t_end = t_end.to_pydatetime()
+        self.coordinator.client.set_selected_entry(i_entry)
         await self.coordinator.async_request_refresh()
 
     @property

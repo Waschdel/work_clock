@@ -77,7 +77,7 @@ class WorkClockSensorHours(WorkClockEntity, SensorEntity):
         data = self.coordinator.client.states_day
         if not data.shape[0]:
             return 0
-        return data.iloc[-1]["duration"].total_seconds() / 3600
+        return round(data.iloc[-1]["duration"].total_seconds() / 3600, 2)
 
 
 class WorkClockSensorEndTime(WorkClockEntity, SensorEntity):
@@ -90,7 +90,7 @@ class WorkClockSensorEndTime(WorkClockEntity, SensorEntity):
     ) -> None:
         """Initialize the WorkClock switch."""
         super().__init__(coordinator, config_entry)
-        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        self._attr_device_class = None
         self._attr_state_class = None
 
     @property
@@ -116,7 +116,8 @@ class WorkClockSensorEndTime(WorkClockEntity, SensorEntity):
         if not data.shape[0]:
             return None
         work_hours = self.config_entry.options.get(CONF_WORKHOURS, 7)
-        return data.iloc[-1]["start"] + timedelta(hours=work_hours)
+        t_end = data.iloc[-1]["start"] + timedelta(hours=work_hours)
+        return t_end.strftime("%H:%M")
 
 
 class WorkClockSensorMonFG(WorkClockEntity, SensorEntity):
