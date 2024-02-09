@@ -378,7 +378,6 @@ class WorkClockDbClient:
             ] = None
             if i_end in self.entries.index:
                 self.calc_times(i_end)
-
             i_st = i_end + pd.Timedelta(1, "d")
 
         self.entries.loc[
